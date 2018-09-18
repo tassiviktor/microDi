@@ -1,11 +1,16 @@
 package hu.viktortassi.microdi;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -111,12 +116,22 @@ public class MicroDi {
                 singletonInstances.put(type, newInstance);
             }
             inject(newInstance);
+            callPostConstruct(newInstance);
             return newInstance;
-        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException ex) {
+        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | InvocationTargetException ex) {
             throw new MicroDiException(ex.getMessage(), ex);
         }
     }
 
+    private <T> void callPostConstruct(T newInstance) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+        for (Method method : newInstance.getClass().getMethods()) {
+                if (method.isAnnotationPresent(PostConstruct.class)) {
+                    method.setAccessible(true);
+                    method.invoke(newInstance);
+                }
+            }
+    }
+    
     public <T> void inject(T newInstance) throws IllegalArgumentException, IllegalAccessException {
         Class superClass = newInstance.getClass();
         while (superClass != null) {
